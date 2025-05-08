@@ -1,0 +1,9 @@
+.env
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+attendance.db
+*.sqlite3
+python==3.9.0

@@ -1,0 +1,940 @@
+{% extends "layout.html" %}
+
+{% block title %}智能打卡系統 - 打卡{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 30px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .header h1 {
+        color: #1890ff;
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    
+    .subtitle {
+        font-size: 18px;
+        color: #777;
+        margin-bottom: 10px;
+    }
+    
+    .time-display {
+        font-size: 24px;
+        color: #333;
+        background-color: #f5f5f5;
+        padding: 10px 20px;
+        border-radius: 50px;
+        display: inline-block;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    
+    .camera-wrapper {
+        position: relative;
+        margin: 0 auto 30px;
+        width: 100%;
+        max-width: 640px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    #video {
+        width: 100%;
+        height: auto;
+        transform: scaleX(-1); /* 水平翻轉 */
+        background-color: #eee;
+        display: block;
+    }
+    
+    .camera-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+    
+    #canvas {
+        display: none;
+    }
+    
+    .controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        font-size: 16px;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-primary {
+        background-color: #1890ff;
+        color: white;
+        box-shadow: 0 2px 6px rgba(24, 144, 255, 0.35);
+    }
+    
+    .btn-primary:hover {
+        background-color: #40a9ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.45);
+    }
+    
+    .btn-danger {
+        background-color: #ff4d4f;
+        color: white;
+        box-shadow: 0 2px 6px rgba(255, 77, 79, 0.35);
+    }
+    
+    .btn-danger:hover {
+        background-color: #ff7875;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 77, 79, 0.45);
+    }
+    
+    .btn-success {
+        background-color: #52c41a;
+        color: white;
+        box-shadow: 0 2px 6px rgba(82, 196, 26, 0.35);
+    }
+    
+    .btn-success:hover {
+        background-color: #73d13d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(82, 196, 26, 0.45);
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        transform: none;
+        box-shadow: none;
+        cursor: not-allowed;
+    }
+    
+    .status-badge {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-weight: bold;
+        font-size: 14px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+    }
+    
+    .status-badge.with-mask {
+        background-color: #f6ffed;
+        border: 1px solid #b7eb8f;
+        color: #52c41a;
+    }
+    
+    .status-badge.without-mask {
+        background-color: #fff2f0;
+        border: 1px solid #ffccc7;
+        color: #ff4d4f;
+    }
+    
+    .result-card {
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        text-align: center;
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    .result-success {
+        background-color: #f6ffed;
+        border: 1px solid #b7eb8f;
+        color: #52c41a;
+    }
+    
+    .result-error {
+        background-color: #fff2f0;
+        border: 1px solid #ffccc7;
+        color: #ff4d4f;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .status-text {
+        font-size: 16px;
+        font-weight: bold;
+        margin-top: 8px;
+        color: #777;
+    }
+    
+    .info-card {
+        background-color: #e6f7ff;
+        border: 1px solid #91d5ff;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .info-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #1890ff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .info-content {
+        color: #333;
+    }
+    
+    /* 圖標 */
+    .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+    
+    .icon-camera {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M15 13a3 3 0 11-6 0 3 3 0 016 0z'/%3E%3C/svg%3E");
+    }
+    
+    .icon-stop {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'/%3E%3C/svg%3E");
+    }
+    
+    .icon-clock {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E");
+    }
+    
+    .icon-info {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231890ff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E");
+    }
+    
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #1890ff;
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* 新增樣式，修正攝像頭排版問題 */
+    .camera-container {
+        position: relative;
+        margin: 0 auto 30px;
+        width: 100%;
+        max-width: 640px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .control-panel {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .status-panel {
+        position: relative;
+        margin: -50px 0 20px 0;
+        min-height: 40px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="attendance-container">
+    <div class="header">
+        <h1>智能打卡系統</h1>
+        <div id="currentTime" class="time-display"></div>
+    </div>
+    
+    <div class="status-panel">
+        <div id="faceStatus" class="status-badge">等待初始化...</div>
+        <div id="maskStatus" class="status-badge" style="display:none;">口罩狀態未知</div>
+    </div>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+    
+    
+    
+    <div class="control-panel">
+        <button id="startCamera" class="btn btn-primary" disabled><span class="icon icon-camera"></span>開始攝像頭</button>
+        <button id="stopCamera" class="btn btn-danger" disabled><span class="icon icon-stop"></span>停止攝像頭</button>
+        <button id="clockIn" class="btn btn-success" disabled><span class="icon icon-clock"></span>進行打卡</button>
+    </div>
+    
+    <div id="result"></div>
+    
+    <div id="loadingSpinner" class="loading-spinner">
+        <div class="spinner"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- 升級TensorFlow.js版本以解決兼容性問題 -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.15.0"></script>
+<!-- 加載 face-api.js -->
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+<script>
+    // TensorFlow 環境設置，減少警告信息
+    tf.ENV.set('DEBUG', false);
+    tf.ENV.set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+    tf.ENV.set('WEBGL_FORCE_F16_TEXTURES', false);
+
+    // 全局變量聲明在頂層作用域，確保所有函數能訪問
+    let videoElement;
+    let canvasElement;
+    let context;
+    let startBtn;
+    let stopBtn;
+    let clockInBtn;
+    let resultDiv;
+    let maskStatusDiv;
+    let faceStatusDiv;
+    let timeDisplayDiv;
+    let loadingSpinner;
+    
+    let streaming = false;
+    let maskDetected = false;
+    let faceDetected = false;
+    let detectInterval;
+    let maskDetectionModel = null; // 專業口罩檢測模型
+    
+    // 等待頁面和所有資源加載完成
+    window.onload = async function() {
+        console.log('頁面完全加載，檢查 faceapi 是否可用:', typeof faceapi);
+        console.log('檢查 TensorFlow.js 是否可用:', typeof tf);
+        
+        // 配置TensorFlow環境，減少警告並優化性能
+        tf.ENV.set('DEBUG', false);
+        tf.ENV.set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+        tf.ENV.set('WEBGL_FORCE_F16_TEXTURES', false);
+        
+        // 檢查WebGL支援
+        try {
+            const webGLSupported = tf.ENV.getBool('HAS_WEBGL');
+            console.log('WebGL支援情況:', webGLSupported ? '支援' : '不支援');
+            if (!webGLSupported) {
+                console.warn('WebGL不可用，模型性能可能會受到影響');
+            }
+        } catch (e) {
+            console.error('檢查WebGL支援時發生錯誤:', e);
+        }
+        
+        initializeElements();
+        initApp();
+    };
+    
+    // 初始化頁面元素
+    function initializeElements() {
+        videoElement = document.getElementById('video');
+        canvasElement = document.getElementById('canvas');
+        context = canvasElement.getContext('2d');
+        startBtn = document.getElementById('startCamera');
+        stopBtn = document.getElementById('stopCamera');
+        clockInBtn = document.getElementById('clockIn');
+        resultDiv = document.getElementById('result');
+        maskStatusDiv = document.getElementById('maskStatus');
+        faceStatusDiv = document.getElementById('faceStatus');
+        timeDisplayDiv = document.getElementById('currentTime');
+        loadingSpinner = document.getElementById('loadingSpinner');
+        statusPanel = document.getElementById('statusPanel');
+
+        
+        // 初始化時間並設置定時器
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // 事件監聽
+        startBtn.addEventListener('click', startCamera);
+        stopBtn.addEventListener('click', stopCamera);
+        clockInBtn.addEventListener('click', doClock);
+        
+        // 頁面關閉時釋放資源
+        window.addEventListener('beforeunload', stopCamera);
+    }
+    
+    // 初始化應用的主函數
+    async function initApp() {
+        try {
+            loadingSpinner.style.display = 'block';
+            
+            // 顯示提示信息
+            faceStatusDiv.textContent = '正在加載模型，請稍候...';
+            resultDiv.textContent = '請等待模型加載完成';
+            
+            // 並行加載模型以提高效率
+            const promises = [
+                loadFaceApiModels(),     // 加載Face-API模型
+                loadMaskDetectionModel() // 加載口罩檢測模型
+            ];
+            
+            // 等待所有模型加載完成
+            await Promise.all(promises);
+            
+            console.log('所有模型加載完成');
+            faceStatusDiv.textContent = '請點擊開始攝像頭按鈕';
+            resultDiv.textContent = '系統初始化完成，請開始打卡';
+            
+            // 啟用按鈕
+            startBtn.disabled = false;
+        } catch (error) {
+            console.error('初始化應用失敗:', error);
+            faceStatusDiv.textContent = '初始化失敗，請重載頁面';
+            resultDiv.textContent = '錯誤: ' + error.message;
+        } finally {
+            loadingSpinner.style.display = 'none';
+        }
+    }
+    
+    // 更新時間顯示
+    function updateTime() {
+        const now = new Date();
+        timeDisplayDiv.textContent = now.toLocaleTimeString('zh-TW', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    }
+    
+    // 載入Face-API模型
+    async function loadFaceApiModels() {
+        try {
+            console.log('載入Face-API模型...');
+            const modelBaseUrl = '/static/models/face-api';
+            
+            // 載入人臉檢測模型
+            try {
+                // 使用手動指定的weights_manifest.json路徑
+                await faceapi.nets.tinyFaceDetector.loadFromUri(modelBaseUrl + '/tiny_face_detector/tiny_face_detector_model-weights_manifest.json');
+                console.log('人臉檢測模型已載入');
+            } catch(err) {
+                console.error('載入人臉檢測模型失敗，嘗試使用默認路徑:', err);
+                // 嘗試使用默認路徑
+                await faceapi.nets.tinyFaceDetector.loadFromUri(modelBaseUrl + '/tiny_face_detector');
+                console.log('使用默認路徑載入人臉檢測模型成功');
+            }
+            
+            // 載入人臉標記模型
+            try {
+                // 使用手動指定的weights_manifest.json路徑
+                await faceapi.nets.faceLandmark68Net.loadFromUri(modelBaseUrl + '/face_landmark_68/face_landmark_68_model-weights_manifest.json');
+                console.log('人臉標記模型已載入');
+            } catch(err) {
+                console.error('載入人臉標記模型失敗，嘗試使用默認路徑:', err);
+                // 嘗試使用默認路徑
+                await faceapi.nets.faceLandmark68Net.loadFromUri(modelBaseUrl + '/face_landmark_68');
+                console.log('使用默認路徑載入人臉標記模型成功');
+            }
+            
+            faceStatusDiv.textContent = '人臉檢測模型載入成功';
+            return true;
+        } catch (error) {
+            console.error('載入Face-API模型失敗:', error.name, error.message);
+            if (error instanceof SyntaxError) {
+                console.error('這可能是JSON解析錯誤，請檢查模型文件格式');
+            }
+            if (error.message && error.message.includes('Failed to fetch')) {
+                console.error('無法獲取模型文件，請確保模型文件路徑正確');
+            }
+            faceStatusDiv.textContent = '載入Face-API模型失敗: ' + error;
+            throw error;
+        }
+    }
+    
+    // 載入口罩檢測模型
+    async function loadMaskDetectionModel() {
+        try {
+            console.log('載入口罩檢測模型...');
+            
+            // 釋放先前可能存在的模型資源
+            if (maskDetectionModel) {
+                console.log('釋放先前的模型資源');
+                maskDetectionModel.dispose();
+                maskDetectionModel = null;
+            }
+            
+            // 清理TensorFlow內存
+            tf.tidy(() => {
+                console.log('清理TensorFlow內存');
+                tf.disposeVariables();
+            });
+            
+            // 使用完整的URL路徑確保模型載入正確
+            const modelUrl = window.location.origin + '/static/models/mask_model/model.json';
+            console.log('嘗試從以下路徑載入模型:', modelUrl);
+            
+            try {
+                // 設置固定的輸入大小 - 根據model.json確定為224x224x3
+                const inputSize = [224, 224, 3];
+                console.log('使用固定輸入尺寸:', inputSize);
+                
+                // 根據用戶要求優先使用loadLayersModel加載模型
+                console.log('優先使用loadLayersModel加載模型...');
+                try {
+                    // 設置加載選項
+                    const loadOptions = {
+                        strict: false,  // 非嚴格模式，提高兼容性
+                        weightPathPrefix: '' // 權重路徑前綴
+                    };
+                    
+                    // 直接使用loadLayersModel加載
+                    maskDetectionModel = await tf.loadLayersModel(modelUrl, loadOptions);
+                    console.log('使用tf.loadLayersModel加載模型成功');
+                } catch (layersError) {
+                    console.warn('使用loadLayersModel加載失敗，嘗試其他方法:', layersError);
+                    
+                    // 如果layers加載失敗，嘗試使用loadGraphModel
+                    try {
+                        console.log('嘗試使用tf.loadGraphModel加載...');
+                        maskDetectionModel = await tf.loadGraphModel(modelUrl, {strict: false});
+                        console.log('使用tf.loadGraphModel加載模型成功');
+                    } catch (graphError) {
+                        console.error('所有模型加載方法都失敗');
+                        throw new Error('無法加載模型: ' + layersError.message);
+                    }
+                }
+                
+                // 模型預熱
+                console.log('進行模型預熱...');
+                const dummyTensor = tf.zeros([1, ...inputSize]);
+                const warmupResult = maskDetectionModel.predict(dummyTensor);
+                warmupResult.dispose();
+                dummyTensor.dispose();
+                
+                console.log('口罩檢測模型加載和預熱成功');
+                return true;
+                
+            } catch (primaryError) {
+                console.error('模型加載失敗:', primaryError);
+                
+                // 如果無法加載，創建備用模型
+                console.log('創建備用模型...');
+                
+                const input = tf.input({shape: [224, 224, 3]});
+                const conv1 = tf.layers.conv2d({
+                    filters: 32,
+                    kernelSize: 3,
+                    strides: 2,
+                    padding: 'same',
+                    activation: 'relu'
+                }).apply(input);
+                
+                const maxPool1 = tf.layers.maxPooling2d({poolSize: 2}).apply(conv1);
+                const conv2 = tf.layers.conv2d({
+                    filters: 64,
+                    kernelSize: 3,
+                    padding: 'same',
+                    activation: 'relu'
+                }).apply(maxPool1);
+                
+                const maxPool2 = tf.layers.maxPooling2d({poolSize: 2}).apply(conv2);
+                const flatten = tf.layers.flatten().apply(maxPool2);
+                const dense1 = tf.layers.dense({units: 128, activation: 'relu'}).apply(flatten);
+                const dropout = tf.layers.dropout({rate: 0.5}).apply(dense1);
+                const output = tf.layers.dense({units: 2, activation: 'softmax'}).apply(dropout);
+                
+                // 構建並編譯模型
+                maskDetectionModel = tf.model({inputs: input, outputs: output});
+                maskDetectionModel.compile({
+                    optimizer: 'adam',
+                    loss: 'categoricalCrossentropy',
+                    metrics: ['accuracy']
+                });
+                
+                console.log('備用模型創建成功，但注意此模型未經訓練');
+                alert('原始口罩檢測模型加載失敗，已啟用未訓練的備用模型。請聯繫管理員檢查模型文件。');
+                
+                return true;
+            }
+        } catch (error) {
+            console.error('載入口罩檢測模型徹底失敗:', error);
+            console.error('錯誤詳情:', error.message, error.stack);
+            throw error;
+        }
+    }
+    
+    // 開啟攝像頭
+    async function startCamera() {
+        try {
+            const constraints = {
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                }
+            };
+            
+            console.log('請求訪問攝像頭...');
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = stream;
+            
+            videoElement.onloadedmetadata = () => {
+                videoElement.play();
+                
+                // 設置畫布尺寸與視頻相同
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                
+                streaming = true;
+                updateButtons();
+                startDetection();
+                console.log('攝像頭已開啟並開始檢測');
+            };
+        } catch (err) {
+            console.error('攝像頭錯誤:', err);
+            alert('無法訪問攝像頭，請確保已授權並且沒有其他應用正在使用攝像頭。');
+        }
+    }
+    
+    // 關閉攝像頭
+    function stopCamera() {
+        if (videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.srcObject = null;
+            streaming = false;
+            stopDetection();
+            updateButtons();
+            maskStatusDiv.style.display = 'none';
+            faceStatusDiv.textContent = '';
+            statusPanel.style.display = 'none';
+            // 清除畫布上的繪製內容
+            const ctx = canvasElement.getContext('2d');
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // 清除疊加的畫布
+            const overlay = videoElement.parentElement.querySelector('.camera-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            
+            console.log('攝像頭已關閉');
+        }
+    }
+    
+    // 實時檢測
+    function startDetection() {
+        // 創建前端畫布用於繪製檢測框
+        const overlayCanvas = document.createElement('canvas');
+        overlayCanvas.className = 'camera-overlay';
+        // 為了與視頻一致，也進行水平翻轉
+        overlayCanvas.style.transform = 'scaleX(-1)';
+        videoElement.parentElement.appendChild(overlayCanvas);
+        
+        detectInterval = setInterval(async () => {
+            if (streaming) {
+                try {
+                    // 使用Face-API檢測人臉
+                    const detections = await faceapi.detectAllFaces(videoElement, new faceapi.TinyFaceDetectorOptions({
+                        inputSize: 416,    // 輸入尺寸設定為416，提高精度
+                        scoreThreshold: 0.15 // 提高閾值至0.4，增加檢測精確度，減少誤檢
+                    }))
+                        .withFaceLandmarks();
+                    
+                    faceDetected = detections.length > 0;
+                
+                // 更新人臉檢測狀態
+                if (faceDetected) {
+                    // 檢測到人臉
+                    faceStatusDiv.textContent = '已檢測到人臉';
+                    
+                        // 對第一個檢測到的人臉進行口罩檢測
+                        const hasMask = await detectMask(videoElement, detections[0]);
+                        
+                        // 更新口罩狀態
+                        maskDetected = hasMask;
+                        maskStatusDiv.style.display = 'block';
+                        maskStatusDiv.innerText = maskDetected ? '已佩戴口罩' : '未佩戴口罩';
+                        maskStatusDiv.className = 'status-badge ' + (maskDetected ? 'with-mask' : 'without-mask');
+
+                        // 繪製人臉和口罩檢測結果
+                        drawDetectionOverlay(overlayCanvas, detections, maskDetected);
+                } else {
+                    // 沒有檢測到人臉
+                    faceStatusDiv.textContent = '未檢測到人臉，請調整位置';
+                    maskStatusDiv.style.display = 'none';
+                    
+                    // 清除畫布
+                    const ctx = overlayCanvas.getContext('2d');
+                    overlayCanvas.width = videoElement.videoWidth;
+                    overlayCanvas.height = videoElement.videoHeight;
+                    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                }
+                
+                // 更新打卡按鈕狀態
+                    clockInBtn.disabled = !faceDetected;
+                } catch (error) {
+                    console.error('檢測過程中發生錯誤:', error);
+                }
+            }
+        }, 500); // 調整檢測間隔為500毫秒，減少CPU負擔
+    }
+    
+    // 繪製人臉和口罩檢測框
+    function drawDetectionOverlay(canvas, detections, hasMask) {
+        const ctx = canvas.getContext('2d');
+        
+        // 確保canvas尺寸與視頻一致
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        
+        // 清除之前的繪製內容
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 調整尺寸以適應畫布
+        const resizedDetections = faceapi.resizeResults(detections, {
+            width: canvas.width,
+            height: canvas.height
+        });
+        
+        // 只繪製人臉框，不繪製特徵點
+        faceapi.draw.drawDetections(canvas, resizedDetections);
+        
+    }
+    
+    function stopDetection() {
+        if (detectInterval) {
+            clearInterval(detectInterval);
+            detectInterval = null;
+        }
+        
+        // 移除疊加的畫布
+        const overlay = videoElement.parentElement.querySelector('.camera-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    // 使用模型檢測口罩
+    async function detectMask(video, faceDetection) {
+        try {
+            if (!maskDetectionModel) {
+                console.error('口罩檢測模型未載入');
+                return false;
+            }
+            
+            // 使用tf.tidy自動清理中間張量
+            return tf.tidy(() => {
+                // 從視頻幀中提取人臉區域
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 獲取人臉框位置
+                const box = faceDetection.detection.box;
+                
+                // 擴大區域以包含下巴和可能的口罩位置
+                const expandedWidth = box.width * 1.2;
+                const expandedHeight = box.height * 1.5;
+                const x = Math.max(0, box.x - (expandedWidth - box.width) / 2);
+                const y = Math.max(0, box.y - (expandedHeight - box.height) / 4);
+                
+                // 使用固定的輸入尺寸 224x224，與模型匹配
+                const inputSize = [224, 224];
+                canvas.width = inputSize[0];
+                canvas.height = inputSize[1];
+                
+                // 從視頻中裁剪人臉區域並調整到模型輸入尺寸
+                ctx.drawImage(
+                    video, 
+                    x, y, expandedWidth, expandedHeight,
+                    0, 0, inputSize[0], inputSize[1]
+                );
+                
+                // 轉換為模型輸入格式
+                const imageData = ctx.getImageData(0, 0, inputSize[0], inputSize[1]);
+                const tensor = tf.browser.fromPixels(imageData)
+                    .resizeNearestNeighbor(inputSize)
+                    .toFloat()
+                    .div(255.0)
+                    .expandDims(0); // 添加批次維度
+                
+                // 使用模型預測
+                try {
+                    const predictions = maskDetectionModel.predict(tensor);
+                    const probabilities = predictions.dataSync(); // 使用同步方式獲取數據
+                    
+                    // 解析結果 - 第一個值通常是無口罩的概率，第二個是有口罩的概率
+                    let withMaskProb, withoutMaskProb;
+                    
+                    if (probabilities.length >= 2) {
+                        // 標準二分類輸出
+                        withoutMaskProb = probabilities[1];
+                        withMaskProb = probabilities[0];
+                    } else if (probabilities.length === 1) {
+                        // 單一值輸出（可能是口罩概率）
+                        withMaskProb = probabilities[0];
+                        withoutMaskProb = 1 - withMaskProb;
+                    } 
+                                        
+                    // 提高閾值，增加判斷嚴格度
+                    return withMaskProb > 0.6; // 將閾值提高到0.6，使口罩檢測更嚴格
+                } catch (predictError) {
+                    console.error('預測過程中出錯:', predictError);
+                    // 如果標準predict方法失敗，嘗試使用execute方法
+                    if (typeof maskDetectionModel.execute === 'function') {
+                        try {
+                            const altPredictions = maskDetectionModel.execute(tensor);
+                            const altProbabilities = altPredictions.dataSync();
+                            
+                            console.log('使用alternate預測方法，結果:', altProbabilities);
+                            
+                            // 嘗試解釋結果
+                            if (altProbabilities.length > 0) {
+                                // 假設最後一個輸出是口罩的概率
+                                const withMaskProb = altProbabilities[altProbabilities.length > 1 ? 1 : 0];
+                                return withMaskProb > 0.6; // 提高閾值到0.6
+                            }
+                        } catch (e) {
+                            console.error('備用預測方法也失敗:', e);
+                        }
+                    }
+                    
+                    // 如果所有方法都失敗，默認返回false表示未戴口罩
+                    console.warn('所有預測方法都失敗，默認假設用戶未戴口罩');
+                    return false;
+                }
+            });
+        } catch (error) {
+            console.error('口罩檢測錯誤:', error);
+            // 在最壞的情況下，返回false表示未戴口罩，確保安全性
+            return false;
+        }
+    }
+    
+    // 執行打卡操作
+    async function doClock() {
+        if (!faceDetected) {
+            alert('請確保人臉在鏡頭中並被正確檢測到');
+            return;
+        }
+
+        
+        try {
+            // 顯示加載中
+            loadingSpinner.style.display = 'block';
+            clockInBtn.disabled = true;
+            
+            // 擷取當前畫面
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            const dataURL = canvasElement.toDataURL('image/jpeg');
+            
+            // 截取base64部分，移除前綴
+            const base64Image = dataURL.split(',')[1];
+            
+            // 使用JSON格式發送請求 - 確保與後端DirectClockRequest模型匹配
+            const response = await fetch('/api/attendance/direct-clock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: base64Image,
+                    with_mask: maskDetected
+                })
+            });
+            
+            if (!response.ok) {
+                // 獲取詳細錯誤信息
+                const errorText = await response.text();
+                console.error('後端響應錯誤詳情:', errorText);
+                throw new Error(`伺服器響應錯誤: ${response.status} ${response.statusText}\n詳情: ${errorText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <div class="success-message">
+                        <h3>打卡成功!</h3>
+                        <p>姓名: ${result.employee_name || '未知'}</p>
+                        <p>時間: ${result.timestamp || new Date().toISOString()}</p>
+                        <p>${result.message || '打卡記錄已保存'}</p>
+                    </div>
+                `;
+                
+                // 自動停止攝像頭
+                setTimeout(() => {
+                    stopCamera();
+                }, 3000);
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error-message">
+                        <h3>打卡失敗</h3>
+                        <p>${result.detail || result.message || '未知錯誤'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('打卡失敗:', error);
+            resultDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>處理錯誤</h3>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        } finally {
+            // 隱藏加載中
+            loadingSpinner.style.display = 'none';
+            clockInBtn.disabled = false;
+        }
+    }
+    
+    // 更新按鈕狀態
+    function updateButtons() {
+        startBtn.disabled = streaming;
+        stopBtn.disabled = !streaming;
+        clockInBtn.disabled = !streaming || !faceDetected || !maskDetected;
+    }
+</script>
+{% endblock %} 

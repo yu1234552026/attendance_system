@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-production-secret-key}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-attendance}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@example.com}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-admin}
+    volumes:
+      - attendance_data:/app/data
+    depends_on:
+      - db
+    networks:
+      - attendance-network
+
+  # 如果需要生产环境使用PostgreSQL
+  db:
+    image: postgres:14
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-attendance}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - attendance-network
+
+volumes:
+  attendance_data:
+  postgres_data:
+
+networks:
+  attendance-network:

@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+
+{% block title %}智能打卡系統 - 登入{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f0f2f5;
+        background-image: linear-gradient(to right, rgba(24, 144, 255, 0.1), rgba(82, 196, 26, 0.05));
+    }
+    
+    .main-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 220px);
+    }
+    
+    .login-card {
+        background-color: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 400px;
+        max-width: 90%;
+        animation: fadeIn 1s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .login-title {
+        font-size: 28px;
+        color: #1890ff;
+        margin-bottom: 10px;
+    }
+    
+    .login-subtitle {
+        color: #666;
+        font-size: 16px;
+    }
+    
+    .form-group {
+        margin-bottom: 25px;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus {
+        border-color: #40a9ff;
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        outline: 0;
+    }
+    
+    .form-control::placeholder {
+        color: #bfbfbf;
+    }
+    
+    .login-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    
+    .login-btn:hover {
+        background-color: #40a9ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.35);
+    }
+    
+    .error-message {
+        background-color: #fff2f0;
+        border: 1px solid #ffccc7;
+        color: #ff4d4f;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 25px;
+        text-align: center;
+        font-weight: 500;
+    }
+    
+    .footer {
+        margin-top: 0;
+    }
+    
+    .icon-login {
+        width: 20px;
+        height: 20px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1'/%3E%3C/svg%3E");
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <div class="login-header">
+        <h1 class="login-title">智能打卡系統</h1>
+        <p class="login-subtitle">使用人臉識別和口罩檢測的考勤系統</p>
+    </div>
+    
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+    
+    <form method="post" action="/login">
+        <div class="form-group">
+            <label for="email" class="form-label">電子郵箱</label>
+            <input type="email" id="email" name="email" class="form-control" required placeholder="請輸入您的電子郵箱">
+        </div>
+        
+        <div class="form-group">
+            <label for="password" class="form-label">密碼</label>
+            <input type="password" id="password" name="password" class="form-control" required placeholder="請輸入您的密碼">
+        </div>
+        
+        <button type="submit" class="login-btn">
+            <span class="icon-login"></span>登入系統
+        </button>
+    </form>
+</div>
+{% endblock %} 
