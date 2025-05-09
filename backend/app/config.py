@@ -15,11 +15,9 @@ class Settings(BaseSettings):
     
     # 資料庫配置
     DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
-    POSTGRES_USER: Optional[str] = None
-    POSTGRES_PASSWORD: Optional[str] = None
-    POSTGRES_DB: Optional[str] = None
-    DATABASE_URL: Optional[str] = None
-
+    POSTGRES_USER: Optional[str] = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD: Optional[str] = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_DB: Optional[str] = os.getenv("POSTGRES_DB")
 
     # 本地SQLite資料庫路徑 (當DATABASE_URL未設置時使用)
     @property
@@ -32,7 +30,13 @@ class Settings(BaseSettings):
     @property
     def complete_database_url(self) -> str:
         if self.DATABASE_URL:
-            return self.DATABASE_URL
+            # 处理Railway提供的PostgreSQL URL (如果需要)
+            db_url = self.DATABASE_URL
+            if db_url.startswith("postgres://"):
+                # Railway格式的URL: postgres://user:pass@host:port/db
+                # 转换为SQLAlchemy格式: postgresql://user:pass@host:port/db
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            return db_url
         # 加上 check_same_thread=False 以支援多執行緒
         return f"sqlite:///{self.sqlite_db_path}?check_same_thread=False"
     

@@ -291,9 +291,13 @@ async def face_registration_page(request: Request, db: Session = Depends(get_db)
 # API服務
 @app.get("/api")
 async def api_root():
-    return {"message": "智能打卡系統 API 服務運行中"}
+    return {"message": "API根路径"}
+
+# 健康检查端点
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 5000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=settings.DEBUG) 
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG) 

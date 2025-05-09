@@ -3,6 +3,7 @@ import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import logging
+import time
 
 # 添加父目录到系统路径，以便导入app模块
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -26,11 +27,27 @@ def main():
         logger.error("请检查环境变量DATABASE_URL是否正确设置")
         return
     
-    logger.info(f"使用数据库连接: {database_url}")
+    logger.info(f"使用数据库连接类型: {database_url.split(':')[0]}")
+    
+    # 尝试连接数据库，最多重试5次
+    max_retries = 5
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            # 创建数据库引擎和连接
+            engine = create_engine(database_url)
+            engine.connect()  # 测试连接
+            logger.info("数据库连接成功")
+            break
+        except Exception as e:
+            retry_count += 1
+            logger.warning(f"尝试 {retry_count}/{max_retries} 连接数据库失败: {str(e)}")
+            if retry_count >= max_retries:
+                logger.error("达到最大重试次数，无法连接数据库")
+                raise
+            time.sleep(5)  # 等待5秒后重试
     
     try:
-        # 创建数据库引擎和连接
-        engine = create_engine(database_url)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         
         # 创建所有表格
@@ -64,6 +81,7 @@ def main():
         logger.info("PostgreSQL数据库初始化完成")
     except Exception as e:
         logger.error(f"初始化数据库时发生错误: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main() 

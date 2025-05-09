@@ -1,0 +1,35 @@
+services:
+  # 主Web服务
+  - type: web
+    name: attendance-system
+    env: docker
+    region: singapore  # 可以根据您的需求选择区域
+    plan: free  # 免费计划
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true  # 自动生成安全密钥
+      - key: SECURE_COOKIES
+        value: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 480
+      - key: DEFAULT_ADMIN_EMAIL
+        value: admin@example.com
+      - key: DEFAULT_ADMIN_PASSWORD
+        value: admin  # 建议在首次登录后立即修改
+      - key: DEFAULT_ADMIN_NAME
+        value: 系统管理员
+      - key: DATABASE_URL
+        fromDatabase:
+          name: attendance-db
+          property: connectionString
+
+databases:
+  # PostgreSQL数据库
+  - name: attendance-db
+    region: singapore  # 可以根据您的需求选择区域
+    plan: free  # 免费计划 
